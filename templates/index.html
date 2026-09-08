@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>J.A.R.V.I.S. Interface</title>
+    <style>
+        body {
+            /* Aquí llamamos a tu imagen */
+            background-image: url('/static/fondo.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #00ffcc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            background: rgba(10, 15, 25, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid #00ffcc;
+            border-radius: 15px;
+            width: 70%;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+        }
+        #historial {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding-right: 10px;
+        }
+        .mensaje { margin-bottom: 15px; padding: 10px 15px; border-radius: 10px; width: fit-content; max-width: 80%; }
+        .usuario { background: rgba(0, 255, 204, 0.2); margin-left: auto; color: white; border-bottom-right-radius: 0; }
+        .jarvis { background: rgba(255, 255, 255, 0.1); border-bottom-left-radius: 0; }
+        
+        .controles { display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 15px; border-radius: 8px; border: 1px solid #00ffcc; background: rgba(0,0,0,0.5); color: white; font-size: 16px; }
+        button { padding: 15px 25px; border-radius: 8px; border: none; background: #00ffcc; color: black; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #00ccaa; box-shadow: 0 0 10px #00ffcc; }
+        #btn-mic { background: #ff3366; color: white; }
+        #btn-mic:hover { background: #cc0044; box-shadow: 0 0 10px #ff3366; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2 style="text-align: center; border-bottom: 1px solid #00ffcc; padding-bottom: 10px;">J.A.R.V.I.S. TERMINAL</h2>
+        <div id="historial">
+            <div class="mensaje jarvis">Sistemas en línea. Conexión neuronal establecida.</div>
+        </div>
+        <div class="controles">
+            <button id="btn-mic" onclick="activarMicrofono()">🎤 Hablar</button>
+            <input type="text" id="texto-entrada" placeholder="Escribe un comando aquí..." onkeypress="if(event.key === 'Enter') enviarTexto()">
+            <button onclick="enviarTexto()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const historial = document.getElementById('historial');
+        const inputTexto = document.getElementById('texto-entrada');
+
+        function agregarMensaje(texto, emisor) {
+            if (!texto) return;
+            const div = document.createElement('div');
+            div.className = `mensaje ${emisor}`;
+            div.textContent = texto;
+            historial.appendChild(div);
+            historial.scrollTop = historial.scrollHeight; // Auto-scroll hacia abajo
+        }
+
+        async function procesarComando(comandoData) {
+            // Hacemos la petición a tu código en Python
+            const respuesta = await fetch('/procesar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comando: comandoData })
+            });
+            const datos = await respuesta.json();
+            
+            // Agregamos lo que escuchó (si fue por voz) y la respuesta de Jarvis
+            if(comandoData === "MODO_VOZ") { agregarMensaje(datos.comando_detectado, "usuario"); }
+            agregarMensaje(datos.respuesta, "jarvis");
+        }
+
+        function enviarTexto() {
+            const texto = inputTexto.value.trim();
+            if (texto === "") return;
+            agregarMensaje(texto, "usuario");
+            inputTexto.value = "";
+            procesarComando(texto);
+        }
+
+        function activarMicrofono() {
+            agregarMensaje("Escuchando por el micrófono de la PC...", "jarvis");
+            procesarComando("MODO_VOZ"); // Le avisa a Python que active tu función escuchar()
+        }
+    </script>
+</body>
+</html>
