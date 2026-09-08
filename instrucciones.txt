@@ -1,0 +1,6 @@
+buenas colega priero que nada debes crear un archivo que sea solo 
+.env
+y en este colocar tu credenciales de ia de gemini en https://aistudio.google.com/api-keys copias ña api key
+asi como abajo se be
+GEMINI_API_KEY = tuclave y listo
+y la peticiones que sean simples como abre youtube o abre steam
