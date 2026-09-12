@@ -2,104 +2,332 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>J.A.R.V.I.S. Interface</title>
     <style>
+        /* --- RESET Y VARIABLES --- */
+        :root {
+            --neon-blue: #00ffcc;
+            --dark-bg: rgba(10, 15, 25, 0.85);
+            --danger-red: #ff3366;
+            --text-user: #ffffff;
+            --text-jarvis: #b3fff0;
+        }
+
         body {
-            /* Aquí llamamos a tu imagen */
+            /* Fallback en caso de que fondo.jpg no cargue */
+            background-color: #050810; 
             background-image: url('/static/fondo.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            color: #00ffcc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--neon-blue);
+            font-family: 'Consolas', 'Courier New', monospace; /* Tipografía de terminal */
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
+
+        /* --- CONTENEDOR PRINCIPAL --- */
         .chat-container {
-            background: rgba(10, 15, 25, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid #00ffcc;
-            border-radius: 15px;
-            width: 70%;
-            max-width: 800px;
-            height: 80vh;
+            background: var(--dark-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 12px;
+            width: 85%;
+            max-width: 900px;
+            height: 85vh;
             display: flex;
             flex-direction: column;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            padding: 25px;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.1), inset 0 0 15px rgba(0, 255, 204, 0.05);
         }
+        
+        /* --- HEADER Y LOGO --- */
+        .header-jarvis {
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.4);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .logo-jarvis {
+            width: 70px; 
+            height: 70px; 
+            border-radius: 50%; 
+            animation: pulso-neon 2.5s infinite alternate ease-in-out; 
+            margin-bottom: 10px;
+            object-fit: cover;
+            border: 2px solid var(--neon-blue);
+        }
+
+        .header-jarvis h2 {
+            margin: 0; 
+            letter-spacing: 4px;
+            font-weight: 300;
+            text-shadow: 0 0 8px var(--neon-blue);
+        }
+
+        @keyframes pulso-neon {
+            0% { box-shadow: 0 0 5px var(--neon-blue), 0 0 15px var(--neon-blue); }
+            100% { box-shadow: 0 0 15px var(--neon-blue), 0 0 30px var(--neon-blue), 0 0 45px var(--neon-blue); }
+        }
+
+        /* --- ÁREA DE MENSAJES (HISTORIAL) --- */
         #historial {
             flex-grow: 1;
             overflow-y: auto;
             margin-bottom: 20px;
-            padding-right: 10px;
+            padding-right: 15px;
+            display: flex;
+            flex-direction: column;
         }
-        .mensaje { margin-bottom: 15px; padding: 10px 15px; border-radius: 10px; width: fit-content; max-width: 80%; }
-        .usuario { background: rgba(0, 255, 204, 0.2); margin-left: auto; color: white; border-bottom-right-radius: 0; }
-        .jarvis { background: rgba(255, 255, 255, 0.1); border-bottom-left-radius: 0; }
+
+        /* Scrollbar Neón */
+        #historial::-webkit-scrollbar { width: 6px; }
+        #historial::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+        #historial::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 3px; }
+
+        .mensaje {
+            margin-bottom: 15px; 
+            padding: 12px 18px; 
+            border-radius: 8px; 
+            width: fit-content; 
+            max-width: 75%;
+            word-wrap: break-word;
+            line-height: 1.4;
+            font-size: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .usuario { 
+            background: rgba(0, 255, 204, 0.15); 
+            margin-left: auto; 
+            color: var(--text-user); 
+            border-bottom-right-radius: 0; 
+            border-left: 2px solid var(--neon-blue);
+        }
+
+        .jarvis { 
+            background: rgba(0, 0, 0, 0.4); 
+            color: var(--text-jarvis);
+            border-bottom-left-radius: 0; 
+            border-right: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .error {
+            background: rgba(255, 51, 102, 0.2);
+            color: var(--danger-red);
+            border: 1px solid var(--danger-red);
+        }
+
+        /* --- CONTROLES DE ENTRADA --- */
+        .controles { 
+            display: flex; 
+            gap: 12px; 
+        }
+
+        input { 
+            flex-grow: 1; 
+            padding: 15px; 
+            border-radius: 6px; 
+            border: 1px solid rgba(0, 255, 204, 0.5); 
+            background: rgba(0, 0, 0, 0.6); 
+            color: var(--neon-blue); 
+            font-family: inherit;
+            font-size: 16px; 
+            transition: all 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+        }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        button { 
+            padding: 0 25px; 
+            border-radius: 6px; 
+            border: none; 
+            background: var(--neon-blue); 
+            color: #000; 
+            font-family: inherit;
+            font-weight: bold; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+        }
+        button:hover:not(:disabled) { 
+            background: #00ccaa; 
+            box-shadow: 0 0 15px var(--neon-blue); 
+        }
+        button:disabled {
+            background: #555;
+            color: #222;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #btn-mic { background: var(--danger-red); color: white; }
+        #btn-mic:hover:not(:disabled) { background: #cc0044; box-shadow: 0 0 15px var(--danger-red); }
         
-        .controles { display: flex; gap: 10px; }
-        input { flex-grow: 1; padding: 15px; border-radius: 8px; border: 1px solid #00ffcc; background: rgba(0,0,0,0.5); color: white; font-size: 16px; }
-        button { padding: 15px 25px; border-radius: 8px; border: none; background: #00ffcc; color: black; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #00ccaa; box-shadow: 0 0 10px #00ffcc; }
-        #btn-mic { background: #ff3366; color: white; }
-        #btn-mic:hover { background: #cc0044; box-shadow: 0 0 10px #ff3366; }
+        /* Clase para cuando el micrófono está activo */
+        .escuchando {
+            animation: latido-rojo 1s infinite alternate;
+        }
+        @keyframes latido-rojo {
+            from { background: var(--danger-red); box-shadow: 0 0 5px var(--danger-red); }
+            to { background: #ff0040; box-shadow: 0 0 25px #ff0040; }
+        }
+
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <h2 style="text-align: center; border-bottom: 1px solid #00ffcc; padding-bottom: 10px;">J.A.R.V.I.S. TERMINAL</h2>
-        <div id="historial">
-            <div class="mensaje jarvis">Sistemas en línea. Conexión neuronal establecida.</div>
+        
+        <div class="header-jarvis">
+            <img src="/static/logo.png" alt="Logo Jarvis" class="logo-jarvis">
+            <h2>J.A.R.V.I.S. TERMINAL</h2>
         </div>
+
+        <div id="historial">
+            <!-- El mensaje inicial se agrega vía JS para aplicar el efecto de escritura -->
+        </div>
+
         <div class="controles">
             <button id="btn-mic" onclick="activarMicrofono()">🎤 Hablar</button>
-            <input type="text" id="texto-entrada" placeholder="Escribe un comando aquí..." onkeypress="if(event.key === 'Enter') enviarTexto()">
-            <button onclick="enviarTexto()">Enviar</button>
+            <input type="text" id="texto-entrada" placeholder="Introduzca directriz..." autocomplete="off">
+            <button id="btn-enviar" onclick="enviarTexto()">Ejecutar</button>
         </div>
     </div>
 
     <script>
         const historial = document.getElementById('historial');
         const inputTexto = document.getElementById('texto-entrada');
+        const btnEnviar = document.getElementById('btn-enviar');
+        const btnMic = document.getElementById('btn-mic');
 
+        // SEGURIDAD FRONTEND: Evita procesar strings gigantescos que saturen a Flask
+        const MAX_CARACTERES = 200; 
+
+        // Inicialización
+        window.onload = () => {
+            escribirMensajeAnimado("Sistemas en línea. Conexión local establecida. Esperando directrices...", "jarvis");
+            
+            // Listener para la tecla Enter
+            inputTexto.addEventListener('keypress', function(event) {
+                if(event.key === 'Enter') enviarTexto();
+            });
+        };
+
+        // UI: Bloquea la interfaz para evitar Spam de peticiones (Seguridad/Estabilidad)
+        function alternarInterfaz(estado) {
+            inputTexto.disabled = !estado;
+            btnEnviar.disabled = !estado;
+            btnMic.disabled = !estado;
+            if(estado) inputTexto.focus();
+        }
+
+        // UI: Agrega un mensaje estático (para el usuario)
         function agregarMensaje(texto, emisor) {
             if (!texto) return;
             const div = document.createElement('div');
             div.className = `mensaje ${emisor}`;
-            div.textContent = texto;
+            div.textContent = texto; // textContent previene ataques XSS básicos
             historial.appendChild(div);
-            historial.scrollTop = historial.scrollHeight; // Auto-scroll hacia abajo
+            hacerScrollAbajo();
         }
 
-        async function procesarComando(comandoData) {
-            // Hacemos la petición a tu código en Python
-            const respuesta = await fetch('/procesar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ comando: comandoData })
-            });
-            const datos = await respuesta.json();
+        // UI: Efecto de máquina de escribir para las respuestas de Jarvis
+        function escribirMensajeAnimado(texto, emisor) {
+            if (!texto) return;
+            const div = document.createElement('div');
+            div.className = `mensaje ${emisor}`;
+            historial.appendChild(div);
             
-            // Agregamos lo que escuchó (si fue por voz) y la respuesta de Jarvis
-            if(comandoData === "MODO_VOZ") { agregarMensaje(datos.comando_detectado, "usuario"); }
-            agregarMensaje(datos.respuesta, "jarvis");
+            let i = 0;
+            const velocidad = 20; // Milisegundos por letra
+
+            function escribir() {
+                if (i < texto.length) {
+                    div.textContent += texto.charAt(i);
+                    i++;
+                    hacerScrollAbajo();
+                    setTimeout(escribir, velocidad);
+                }
+            }
+            escribir();
+        }
+
+        function hacerScrollAbajo() {
+            historial.scrollTop = historial.scrollHeight;
+        }
+
+        // LÓGICA PRINCIPAL DE COMUNICACIÓN CON FLASK
+        async function procesarComando(comandoData) {
+            alternarInterfaz(false); // Bloquea botones mientras procesa
+
+            try {
+                const respuesta = await fetch('/procesar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comando: comandoData })
+                });
+
+                if (!respuesta.ok) throw new Error(`HTTP error! status: ${respuesta.status}`);
+
+                const datos = await respuesta.json();
+                
+                // Si el comando vino por voz, mostramos lo que detectó
+                if(comandoData === "modo_voz" && datos.comando_detectado) { 
+                    agregarMensaje(`[Micrófono]: ${datos.comando_detectado}`, "usuario"); 
+                }
+                
+                // Muestra la respuesta de Jarvis con animación
+                escribirMensajeAnimado(datos.respuesta, "jarvis");
+
+            } catch (error) {
+                console.error("Error en conexión:", error);
+                agregarMensaje("Error crítico: Conexión con el núcleo Python interrumpida.", "error");
+            } finally {
+                // Remueve efectos visuales y desbloquea botones
+                btnMic.classList.remove("escuchando");
+                btnMic.textContent = "🎤 Hablar";
+                alternarInterfaz(true);
+            }
         }
 
         function enviarTexto() {
-            const texto = inputTexto.value.trim();
+            let texto = inputTexto.value.trim();
+            
+            // Seguridad: Prevención de envíos vacíos o excesivamente largos
             if (texto === "") return;
-            agregarMensaje(texto, "usuario");
+            if (texto.length > MAX_CARACTERES) {
+                texto = texto.substring(0, MAX_CARACTERES);
+                console.warn("Comando truncado por exceder límite de caracteres.");
+            }
+
+            agregarMensaje(`[Teclado]: ${texto}`, "usuario");
             inputTexto.value = "";
             procesarComando(texto);
         }
 
         function activarMicrofono() {
-            agregarMensaje("Escuchando por el micrófono de la PC...", "jarvis");
-            procesarComando("MODO_VOZ"); // Le avisa a Python que active tu función escuchar()
+            // Feedback visual: El botón late en rojo para saber que te está escuchando
+            btnMic.classList.add("escuchando");
+            btnMic.textContent = "Escuchando...";
+            agregarMensaje("Calibrando sensores de audio...", "jarvis");
+            
+            // Tu Python de Flask espera "modo_voz" en minúsculas en tu nuevo código
+            procesarComando("modo_voz"); 
         }
     </script>
 </body>

@@ -1,6 +1,15 @@
-buenas colega priero que nada debes crear un archivo que sea solo 
-.env
-y en este colocar tu credenciales de ia de gemini en https://aistudio.google.com/api-keys copias ña api key
-asi como abajo se be
-GEMINI_API_KEY = tuclave y listo
-y la peticiones que sean simples como abre youtube o abre steam
+Buenas colega.
+
+Acabas de descargar a Jarvis, una versión ligera y 100% local. 
+Para que te funcione correctamente y sin gastar recursos de más, sigue estos pasos:
+
+1. Ejecuta el archivo "Instalar_Jarvis.bat". Esto descargará automáticamente todo lo que necesita para escuchar y hablar.
+2. Asegúrate de tener tu micrófono conectado para que te escuche. Si no tienes micrófono, el programa abrirá una ventana para que escribas el comando.
+3. Ejecuta el archivo "encender_jarvis.vbs" (o abre main.py directamente).
+4. Usa comandos simples como:
+   - "Abre Youtube"
+   - "Abre Steam"
+   - "Busca en internet [lo que quieras buscar]"
+   - "Cierra todo"
+
+¡Y listo! No necesitas claves, ni cuentas, ni internet para las funciones básicas. Todo se procesa directamente en tu PC.

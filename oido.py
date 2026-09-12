@@ -20,8 +20,14 @@ def entrada_texto_manual():
     else:
         return "" # Si le dio a Cancelar o cerró la ventana
 
+
 def escuchar():
     recognizer = sr.Recognizer()
+    
+    # --- LA MAGIA DE LA VELOCIDAD ---
+    recognizer.pause_threshold = 0.5  # Tiempo de silencio antes de cortar (0.5 segundos)
+    recognizer.non_speaking_duration = 0.3 # Ignorar pausas muy cortitas
+    # --------------------------------
     
     try:
         # Intentamos usar el micrófono

@@ -1,57 +1,57 @@
-import google.generativeai as genai
 import os
 import subprocess
-import sys
 import threading
 import time
-from dotenv import load_dotenv
+import webbrowser  # LIBRERÍA NATIVA ULTRA RÁPIDA
+import random      # LIBRERÍA NATIVA PARA RESPUESTAS ALEATORIAS
 from flask import Flask, render_template, request, jsonify
-
-# --- NUEVAS LIBRERÍAS PARA SELENIUM ---
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 
 from oido import escuchar
 from voz import hablar
 
-# Configuración de Gemini
-load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not API_KEY:
-    print("[ERROR] Falta GEMINI_API_KEY en el archivo .env")
-    sys.exit()
-
-genai.configure(api_key=API_KEY)
-modelo = genai.GenerativeModel(
-    model_name="gemini-2.5-pro",
-    system_instruction="Eres Jarvis, un asistente virtual avanzado. Sé conciso, directo y conversacional. No uses asteriscos, negritas ni listas largas."
-)
-
+# --- CEREBRO LOCAL (REEMPLAZO DE GEMINI) ---
 def pensar_y_responder(texto_usuario):
-    return modelo.generate_content(texto_usuario).text
-
-# --- MOTOR DEL NAVEGADOR DE JARVIS (SELENIUM) ---
-navegador_jarvis = None
-
-def obtener_navegador():
-    global navegador_jarvis
-    # Si el navegador no existe o fue cerrado, creamos uno nuevo
-    try:
-        if navegador_jarvis is None or not navegador_jarvis.window_handles:
-            opciones = Options()
-            opciones.add_experimental_option("detach", True)
-            
-            # --- AQUÍ ESTÁ LA CORRECCIÓN ---
-            # Forzamos el uso de Brave indicando su ruta exacta en Windows
-            opciones.binary_location = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-            
-            # Nueva línea usando el gestor inteligente de Selenium
-            navegador_jarvis = webdriver.Chrome(options=opciones)
-    except Exception as e:
-        print(f"Error con el navegador: {e}")
+    texto_usuario = texto_usuario.lower()
+    
+    saludos = ["hola", "buenos días", "buenas tardes", "buenas noches", "jarvis"]
+    agradecimientos = ["gracias", "te lo agradezco", "perfecto"]
+    
+    if any(palabra in texto_usuario for palabra in saludos):
+        return random.choice([
+            "Sistemas en línea. A su entera disposición, señor.",
+            "Es un placer saludarle de nuevo, señor. ¿En qué le asisto?",
+            "Todos los protocolos operativos. ¿Qué haremos el día de hoy, señor?"
+        ])
         
-    return navegador_jarvis
+    elif any(palabra in texto_usuario for palabra in agradecimientos):
+        return random.choice([
+            "El placer es mío, señor.",
+            "Para eso fui diseñado.",
+            "A la orden, como siempre."
+        ])
+        
+    elif "cómo estás" in texto_usuario or "estado de sistemas" in texto_usuario:
+        return "Funcionando a la perfección y con todos los sistemas operativos, señor."
+        
+    elif "quién eres" in texto_usuario:
+        return "Soy Jarvis, su asistente virtual personal, diseñado para ayudarle en sus tareas diarias."
+        
+    # --- AQUÍ AGREGAMOS LA LÓGICA DE LOS CHISTES ---
+    elif "chiste" in texto_usuario or "broma" in texto_usuario:
+        chistes = [
+            "¿Por qué los desarrolladores odian la luz del sol? Porque tiene muchos bugs.",
+            "Hay 10 tipos de personas en el mundo: las que entienden binario y las que no.",
+            "¿Qué le dice un bit al otro? Nos vemos en el bus.",
+            "Señor, mi módulo de humor está en fase beta, pero aquí va uno: ¿Qué hace una abeja en el gimnasio? ¡Zum-ba!"
+        ]
+        return random.choice(chistes)
+
+    else:
+        return random.choice([
+            "Mis disculpas, señor. Esa orden no figura en mi base de datos local.",
+            "Me temo que no he comprendido la instrucción, señor. ¿Podría formularla de otra manera?",
+            "Protocolo no encontrado. Le sugiero indicarme que abra algún archivo o ejecute un programa."
+        ])
 
 # --- INICIO DEL SERVIDOR WEB FLASK ---
 app = Flask(__name__)
@@ -62,7 +62,6 @@ def inicio():
 
 @app.route('/procesar', methods=['POST'])
 def procesar_comando():
-    global navegador_jarvis
     data = request.json
     comando = data.get('comando', '').lower()
     comando_detectado = comando
@@ -83,142 +82,132 @@ def procesar_comando():
         respuesta_final = "Apagando sistemas. Hasta luego, señor."
         ejecutar_voz_en_segundo_plano(respuesta_final)
         
-        if navegador_jarvis:
-            try:
-                navegador_jarvis.quit() # Cierra el navegador fantasma si estaba abierto
-            except:
-                pass
-
         def apagar_servidor():
             os._exit(0)
-            
         threading.Timer(3.0, apagar_servidor).start()
         
-    # 2. CONTROL AVANZADO DE PESTAÑAS (SELENIUM)
-    elif "cierra la pestaña de" in comando:
-        objetivo = comando.replace("cierra la pestaña de", "").strip()
-        
-        if navegador_jarvis:
-            try:
-                pestanas = navegador_jarvis.window_handles
-                cerrada = False
-                
-                # Revisamos una por una las pestañas abiertas
-                for pestana in pestanas:
-                    navegador_jarvis.switch_to.window(pestana)
-                    # Si el título de la página o la URL coinciden con lo que pediste
-                    if objetivo in navegador_jarvis.title.lower() or objetivo in navegador_jarvis.current_url.lower():
-                        navegador_jarvis.close() # Cierra solo esa pestaña
-                        cerrada = True
-                        break
-                        
-                if cerrada:
-                    respuesta_final = f"Pestaña de {objetivo} cerrada."
-                    # Regresamos el control a la primera pestaña que haya quedado abierta
-                    if navegador_jarvis.window_handles:
-                        navegador_jarvis.switch_to.window(navegador_jarvis.window_handles[0])
-                    else:
-                        navegador_jarvis = None # Si era la última, reiniciamos la variable
-                else:
-                    respuesta_final = f"No encontré ninguna pestaña abierta relacionada con {objetivo}."
-            except Exception as e:
-                respuesta_final = "Hubo un error al intentar leer las pestañas actuales."
-        else:
-            respuesta_final = "Actualmente no estoy controlando ningún navegador."
-            
-        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 3. NAVEGACIÓN CON SELENIUM
-    elif "abre youtube" in comando or "entra a youtube" in comando:
-        respuesta_final = "Abriendo YouTube en mis sistemas."
-        driver = obtener_navegador()
-        
-        # Si el navegador acaba de abrirse y solo tiene una pestaña en blanco ("data:,"), 
-        # navegamos directamente en esa pestaña inicial.
-        if len(driver.window_handles) == 1 and driver.current_url == "data:,":
-            driver.get('https://www.youtube.com')
-        else:
-            # Si ya estabas navegando en otra cosa, abrimos una pestaña nueva
-            driver.execute_script("window.open('https://www.youtube.com', '_blank');")
-            
-        ejecutar_voz_en_segundo_plano(respuesta_final)
-
-    elif "busca" in comando and "en internet" in comando: 
+    # 2. BÚSQUEDAS ESPECÍFICAS EN GOOGLE
+    if "busca" in comando and "en internet" in comando: 
         busqueda = comando.replace("busca", "").replace("en internet", "").strip()
         respuesta_final = f"Buscando {busqueda}."
-        driver = obtener_navegador()
-        url = f"https://www.google.com/search?q={busqueda}"
-        
-        if len(driver.window_handles) == 1 and driver.current_url == "data:,":
-            driver.get(url)
-        else:
-            driver.execute_script(f"window.open('{url}', '_blank');")
-            
+        webbrowser.open(f"https://www.google.com/search?q={busqueda}")
         ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 4. ABRIR JUEGOS Y PROGRAMAS (Mantenemos lo que ya funcionaba perfecto)
-    elif "abre steam" in comando:
+    # 3. ABRIR JUEGOS Y PROGRAMAS (Excepciones directas)
+    if "abre steam" in comando:
         respuesta_final = "Iniciando Steam."
         try:
             os.startfile("steam://open/main")
         except Exception:
             subprocess.Popen(r"C:\Program Files (x86)\Steam\steam.exe")            
         ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
         
     elif "abre quaver" in comando or "jugar quaver" in comando:
-        respuesta_final = "Iniciando Quaver. Que te diviertas."
+        respuesta_final = "Iniciando Quaver."
         try:
             os.startfile("steam://rungameid/980610")
         except Exception:
             respuesta_final = "Hubo un problema de conexión."
         ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
         
     elif "abre left 4 dead 2" in comando or "jugar left 4 dead 2" in comando or "abre l4d2" in comando or "jugar l4d2" in comando:
-        respuesta_final = "Iniciando Left 4 Dead 2. Preparando armas contra la horda."
+        respuesta_final = "Iniciando Left 4 Dead 2."
         try:
             os.startfile("steam://rungameid/550")
         except Exception:
             respuesta_final = "Hubo un problema al intentar iniciar el juego."
         ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
     elif "abre plantas versus zombis" in comando or "jugar plantas versus zombis" in comando or "jugar plantas vs zombis" in comando or "abre plantas vs zombis" in comando or "abre plantas vs zombies" in comando or "jugar pvz" in comando or "abre pvz" in comando:
-            respuesta_final = "Iniciando plantas versus zombis. Preparando plantas contra la horda."
-            try:
-                os.startfile("steam://rungameid/3590")
-            except Exception:
-                    respuesta_final = "Hubo un problema al intentar iniciar el juego no van a haber platans hoy señor lo siento."
-            ejecutar_voz_en_segundo_plano(respuesta_final)
+        respuesta_final = "Iniciando Plantas versus Zombis."
+        try:
+            os.startfile("steam://rungameid/3590")
+        except Exception:
+            respuesta_final = "Hubo un problema al intentar iniciar el juego."
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
+    elif "abre hollow knight" in comando or "jugar hollow knight" in comando or "abre hollow" in comando or "jugar hollow" in comando:
+        respuesta_final = "Iniciando Hollow Knight."
+        try:
+            os.startfile("steam://rungameid/367520")
+        except Exception:
+            respuesta_final = "Hubo un problema de conexión con Steam."
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
         
+    elif "abre silksong" in comando or "jugar silksong" in comando:
+        respuesta_final = "Iniciando Silksong."
+        try:
+            os.startfile("steam://rungameid/1030300")
+        except Exception:
+            respuesta_final = "Hubo un problema de conexión con Steam."
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
+    elif "abre youtube" in comando or "entra a youtube" in comando:
+        respuesta_final = "Abriendo YouTube en mis sistemas."
+        webbrowser.open('https://www.youtube.com')
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
+    elif "abre newgrounds" in comando or "entra a newgrounds" in comando:
+        respuesta_final = "Abriendo Newgrounds de inmediato."
+        webbrowser.open('https://www.newgrounds.com')
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
+    # 4. COMANDO INTELIGENTE DE NAVEGACIÓN WEB (CUALQUIER OTRA PÁGINA)
+    elif "abre" in comando or "entra a" in comando or "ve a" in comando:
+        afirmaciones = ["Enseguida, señor.", "A la orden.", "Como usted disponga, señor.", "Procediendo."]
+        
+        # Limpiar el comando para quedarse solo con el nombre del sitio
+        sitio_solicitado = comando.replace("ve a la página de", "")\
+                                  .replace("abre la página de", "")\
+                                  .replace("entra a", "")\
+                                  .replace("abre", "").strip()
+        
+        respuesta_final = f"{random.choice(afirmaciones)} Redirigiendo a {sitio_solicitado}."
+        
+        # EL TRUCO: Usar DuckDuckGo con el modificador '\' para ir al primer resultado directamente
+        url_busqueda = f"https://duckduckgo.com/?q=\\{sitio_solicitado}"
+        webbrowser.open(url_busqueda)
+        
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
     # 5. CERRAR PROGRAMAS EN MASA
     elif "cierra todo" in comando:
-        respuesta_final = "Iniciando protocolo de limpieza. Cerrando aplicaciones."
+        respuesta_final = "Iniciando protocolo de limpieza."
         os.system("taskkill /IM steam.exe /F")
         os.system("taskkill /IM left4dead2.exe /F")
         os.system("taskkill /IM quaver.exe /F")
         os.system("taskkill /IM notepad.exe /F")
         os.system("taskkill /IM brave.exe /F")
-        os.system("taskkill /IM pvz /F")
-        if navegador_jarvis:
-            navegador_jarvis.quit()
-            navegador_jarvis = None
-            
+        os.system("taskkill /IM pvz.exe /F")
+        os.system("taskkill /IM silksong.exe /F")
+        os.system("taskkill /IM hollow_knight.exe /F")
+                
         ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
+    # 6. RESPUESTAS CONVERSACIONALES DEL CEREBRO (Si no fue ninguna orden anterior)
     else:
         respuesta_final = pensar_y_responder(comando)
         ejecutar_voz_en_segundo_plano(respuesta_final)
-
-    return jsonify({
-        "comando_detectado": comando_detectado,
-        "respuesta": respuesta_final
-    })
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
 if __name__ == '__main__':
     def abrir_interfaz():
-        time.sleep(1.5)
-        # Aquí usamos el webbrowser estándar de Python para abrir la interfaz de Jarvis
-        # en tu Brave normal, así no estorba al Selenium.
-        import webbrowser
+        time.sleep(1.2)
         webbrowser.open("http://127.0.0.1:5000")
+        threading.Thread(target=hablar, args=("Sistemas en línea. Bienvenido de nuevo, señor.",), daemon=True).start()
         
     threading.Thread(target=abrir_interfaz).start()
     app.run(port=5000, debug=False)

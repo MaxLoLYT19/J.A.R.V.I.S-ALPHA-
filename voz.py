@@ -1,38 +1,47 @@
-import asyncio
 import edge_tts
-import pygame
+import asyncio
 import os
+import pygame
 
-# Lista de voces en español excelentes:
-# "es-ES-AlvaroNeural" (Hombre, España - tono formal muy estilo asistente)
-# "es-MX-JorgeNeural"
-# "en-US-BrianNeural" (Si prefieres el Jarvis original en inglés)
-VOZ = "es-MX-JorgeNeural"
-
-async def generar_audio(texto, archivo_salida="voz_jarvis.mp3"):
-    comunicador = edge_tts.Communicate(texto, VOZ)
-    await comunicador.save(archivo_salida)
+# Tu voz configurada
+VOZ_JARVIS = "es-MX-JorgeNeural" 
 
 def hablar(texto):
-    print(f"Jarvis: {texto}")
-    archivo = "voz_temporal.mp3"
-
-    # Generamos el audio con la voz neuronal
-    asyncio.run(generar_audio(texto, archivo))
-
-    # Reproducimos el archivo generado
     pygame.mixer.init()
-    pygame.mixer.music.load(archivo)
-    pygame.mixer.music.play()
-
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
-
+    
+    # 1. REPRODUCIR EL SONIDO DE SISTEMA (BIP)
+    try:
+        # Carga y reproduce el sonido de tu carpeta
+        pygame.mixer.music.load("beep.mp3")
+        pygame.mixer.music.play()
+        
+        # Esperamos a que termine el bip corto antes de seguir
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+    except Exception:
+        # Si se te olvida poner el archivo beep.mp3, el código no se rompe, solo sigue adelante
+        pass 
+        
+    # 2. GENERAR LA RESPUESTA DE JARVIS
+    async def _generar_audio():
+        comunicador = edge_tts.Communicate(texto, VOZ_JARVIS)
+        await comunicador.save("temp_jarvis.mp3")
+        
+    asyncio.run(_generar_audio())
+    
+    # 3. REPRODUCIR LA VOZ
+    try:
+        pygame.mixer.music.load("temp_jarvis.mp3")
+        pygame.mixer.music.play()
+        
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+    except Exception as e:
+        print(f"Error reproduciendo voz: {e}")
+        
+    # Limpieza de archivos temporales
     pygame.mixer.quit()
-
-    # Limpieza del archivo temporal
-    if os.path.exists(archivo):
-        os.remove(archivo)
-
-if __name__ == "__main__":
-    hablar("Hola. Los sistemas principales están completamente operativos.")
+    try:
+        os.remove("temp_jarvis.mp3")
+    except:
+        pass
