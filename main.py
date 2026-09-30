@@ -30,23 +30,31 @@ from flask import Flask, render_template, request, jsonify
 from oido import escuchar
 from voz import hablar
 
-# --- SISTEMA DE BLACKLIST ---
-def cargar_blacklist():
-    """Crea el archivo blacklist.txt si no existe y carga las palabras bloqueadas."""
+# --- SISTEMA DE BLACKLIST EN TIEMPO REAL ---
+def asegurar_blacklist():
+    """Crea el archivo blacklist.txt si no existe."""
     if not os.path.exists("blacklist.txt"):
         with open("blacklist.txt", "w", encoding="utf-8") as f:
-            f.write("pornhub\nxvideos\nxnxx\nredtube\nonlyfans\n")
-    
-    with open("blacklist.txt", "r", encoding="utf-8") as f:
-        return [linea.strip().lower() for linea in f.readlines() if linea.strip()]
-
-BLACKLIST = cargar_blacklist()
+            f.write("pornhub\nxvideos\nxnxx\nredtube\nonlyfans\nrule34\nfansly\nchoxchox\nporno\n")
 
 def sitio_bloqueado(texto):
-    """Verifica si alguna palabra de la lista negra está en el texto."""
-    for palabra in BLACKLIST:
-        if palabra in texto:
-            return True
+    """Lee el archivo activamente en cada orden y verifica el contenido bloqueado ignorando espacios."""
+    asegurar_blacklist()
+    try:
+        # Eliminamos espacios del comando detectado para evitar que salten el filtro (ej: "porn hub")
+        texto_limpio = texto.replace(" ", "").lower()
+        
+        # Lee el archivo activamente en cada llamada
+        with open("blacklist.txt", "r", encoding="utf-8") as f:
+            blacklist = [linea.strip().lower() for linea in f.readlines() if linea.strip()]
+            
+        # Comprueba si alguna palabra bloqueada está dentro del comando
+        for palabra in blacklist:
+            palabra_limpia = palabra.replace(" ", "")
+            if palabra_limpia and palabra_limpia in texto_limpio:
+                return True
+    except Exception:
+        pass
     return False
 
 # --- CEREBRO LOCAL ---
@@ -97,20 +105,28 @@ def inicio():
 def procesar_comando():
     data = request.json
     comando = data.get('comando', '').lower()
-    comando_detectado = comando
-
+    
+    # Procesar voz si es necesario
     if comando == "modo_voz":
-        comando_detectado = escuchar()
-        comando = comando_detectado
+        comando = escuchar()
         if not comando:
             return jsonify({"comando_detectado": "", "respuesta": "No logré escuchar nada."})
+
+    comando_detectado = comando
 
     def ejecutar_voz_en_segundo_plano(texto):
         threading.Thread(target=hablar, args=(texto,), daemon=True).start()
 
+    # --- 1. FILTRO BLACKLIST GLOBAL (BLOQUEO INMEDIATO) ---
+    if sitio_bloqueado(comando_detectado):
+        # Respuesta actualizada según tu solicitud
+        respuesta_final = "Lo siento señor, no tengo permitido mostrar ese contenido."
+        ejecutar_voz_en_segundo_plano(respuesta_final)
+        return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
     respuesta_final = ""
 
-    # 1. APAGADO Y CIERRE DEL SERVIDOR
+    # 2. APAGADO Y CIERRE DEL SERVIDOR
     if "apágate" in comando or "salir" in comando or "apagar" in comando:
         respuesta_final = "Apagando sistemas. Hasta luego, señor."
         ejecutar_voz_en_segundo_plano(respuesta_final)
@@ -121,21 +137,15 @@ def procesar_comando():
         
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 2. BÚSQUEDAS ESPECÍFICAS EN GOOGLE (Manteniendo el comando largo explícito)
+    # 3. BÚSQUEDAS ESPECÍFICAS EN GOOGLE
     if "busca" in comando and "en internet" in comando: 
         busqueda = comando.replace("busca", "").replace("en internet", "").strip()
-        
-        if sitio_bloqueado(busqueda):
-            respuesta_final = "Lo siento señor, esa búsqueda infringe sus protocolos de seguridad y está bloqueada."
-            ejecutar_voz_en_segundo_plano(respuesta_final)
-            return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
-
         respuesta_final = f"Buscando {busqueda}."
         webbrowser.open(f"https://www.google.com/search?q={busqueda}")
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 3. ABRIR JUEGOS Y PROGRAMAS
+    # 4. ABRIR JUEGOS Y PROGRAMAS (Excepciones directas)
     if "abre steam" in comando:
         respuesta_final = "Iniciando Steam."
         try:
@@ -202,7 +212,7 @@ def procesar_comando():
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 4. COMANDO INTELIGENTE DE NAVEGACIÓN WEB (CUALQUIER OTRA PÁGINA USANDO "ABRE" O "BUSCA")
+    # 5. COMANDO INTELIGENTE DE NAVEGACIÓN WEB (CUALQUIER OTRA PÁGINA)
     elif any(palabra in comando for palabra in ["abre", "entra a", "ve a", "busca"]):
         afirmaciones = ["Enseguida, señor.", "A la orden.", "Como usted disponga, señor.", "Procediendo."]
         
@@ -211,12 +221,6 @@ def procesar_comando():
         for p in ["ve a la página de", "abre la página de", "entra a", "ve a", "abre", "busca"]:
             sitio_solicitado = sitio_solicitado.replace(p, "")
         sitio_solicitado = sitio_solicitado.strip()
-        
-        # Filtro Blacklist
-        if sitio_bloqueado(sitio_solicitado):
-            respuesta_final = "Lo siento señor, el acceso a ese sitio web ha sido bloqueado por su lista de seguridad."
-            ejecutar_voz_en_segundo_plano(respuesta_final)
-            return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
         respuesta_final = f"{random.choice(afirmaciones)} Redirigiendo a {sitio_solicitado}."
         
@@ -227,7 +231,7 @@ def procesar_comando():
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 5. CERRAR PROGRAMAS EN MASA
+    # 6. CERRAR PROGRAMAS EN MASA
     elif "cierra todo" in comando:
         respuesta_final = "Iniciando protocolo de limpieza."
         os.system("taskkill /IM steam.exe /F")
@@ -242,7 +246,7 @@ def procesar_comando():
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 6. RESPUESTAS CONVERSACIONALES DEL CEREBRO
+    # 7. RESPUESTAS CONVERSACIONALES DEL CEREBRO
     else:
         respuesta_final = pensar_y_responder(comando)
         ejecutar_voz_en_segundo_plano(respuesta_final)
@@ -256,5 +260,3 @@ if __name__ == '__main__':
         
     threading.Thread(target=abrir_interfaz).start()
     app.run(port=5000, debug=False)
-    #sd
-    
