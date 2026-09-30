@@ -256,3 +256,5 @@ if __name__ == '__main__':
         
     threading.Thread(target=abrir_interfaz).start()
     app.run(port=5000, debug=False)
+    #sd
+    
