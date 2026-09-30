@@ -1,18 +1,57 @@
 import os
+import sys
 import subprocess
 import threading
 import time
-import webbrowser  # LIBRERÍA NATIVA ULTRA RÁPIDA
-import random      # LIBRERÍA NATIVA PARA RESPUESTAS ALEATORIAS
-from flask import Flask, render_template, request, jsonify
+import webbrowser
+import random
 
+# --- AUTO-INSTALADOR DE DEPENDENCIAS ---
+def instalar_dependencias():
+    print("Comprobando dependencias del sistema...")
+    try:
+        from flask import Flask
+        import speech_recognition
+        import edge_tts
+        import pygame
+    except ImportError:
+        print("Faltan librerías. Instalando automáticamente desde requirements.txt...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+            print("Instalación completada. Reiniciando JARVIS...")
+            os.execv(sys.executable, ['python'] + sys.argv)
+        except Exception as e:
+            print(f"Error al instalar dependencias: {e}")
+
+# Ejecutar comprobación antes de cargar el resto de módulos dependientes
+instalar_dependencias()
+
+from flask import Flask, render_template, request, jsonify
 from oido import escuchar
 from voz import hablar
 
-# --- CEREBRO LOCAL (REEMPLAZO DE GEMINI) ---
+# --- SISTEMA DE BLACKLIST ---
+def cargar_blacklist():
+    """Crea el archivo blacklist.txt si no existe y carga las palabras bloqueadas."""
+    if not os.path.exists("blacklist.txt"):
+        with open("blacklist.txt", "w", encoding="utf-8") as f:
+            f.write("pornhub\nxvideos\nxnxx\nredtube\nonlyfans\n")
+    
+    with open("blacklist.txt", "r", encoding="utf-8") as f:
+        return [linea.strip().lower() for linea in f.readlines() if linea.strip()]
+
+BLACKLIST = cargar_blacklist()
+
+def sitio_bloqueado(texto):
+    """Verifica si alguna palabra de la lista negra está en el texto."""
+    for palabra in BLACKLIST:
+        if palabra in texto:
+            return True
+    return False
+
+# --- CEREBRO LOCAL ---
 def pensar_y_responder(texto_usuario):
     texto_usuario = texto_usuario.lower()
-    
     saludos = ["hola", "buenos días", "buenas tardes", "buenas noches", "jarvis"]
     agradecimientos = ["gracias", "te lo agradezco", "perfecto"]
     
@@ -22,21 +61,16 @@ def pensar_y_responder(texto_usuario):
             "Es un placer saludarle de nuevo, señor. ¿En qué le asisto?",
             "Todos los protocolos operativos. ¿Qué haremos el día de hoy, señor?"
         ])
-        
     elif any(palabra in texto_usuario for palabra in agradecimientos):
         return random.choice([
             "El placer es mío, señor.",
             "Para eso fui diseñado.",
             "A la orden, como siempre."
         ])
-        
     elif "cómo estás" in texto_usuario or "estado de sistemas" in texto_usuario:
         return "Funcionando a la perfección y con todos los sistemas operativos, señor."
-        
     elif "quién eres" in texto_usuario:
         return "Soy Jarvis, su asistente virtual personal, diseñado para ayudarle en sus tareas diarias."
-        
-    # --- AQUÍ AGREGAMOS LA LÓGICA DE LOS CHISTES ---
     elif "chiste" in texto_usuario or "broma" in texto_usuario:
         chistes = [
             "¿Por qué los desarrolladores odian la luz del sol? Porque tiene muchos bugs.",
@@ -45,7 +79,6 @@ def pensar_y_responder(texto_usuario):
             "Señor, mi módulo de humor está en fase beta, pero aquí va uno: ¿Qué hace una abeja en el gimnasio? ¡Zum-ba!"
         ]
         return random.choice(chistes)
-
     else:
         return random.choice([
             "Mis disculpas, señor. Esa orden no figura en mi base de datos local.",
@@ -88,15 +121,21 @@ def procesar_comando():
         
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 2. BÚSQUEDAS ESPECÍFICAS EN GOOGLE
+    # 2. BÚSQUEDAS ESPECÍFICAS EN GOOGLE (Manteniendo el comando largo explícito)
     if "busca" in comando and "en internet" in comando: 
         busqueda = comando.replace("busca", "").replace("en internet", "").strip()
+        
+        if sitio_bloqueado(busqueda):
+            respuesta_final = "Lo siento señor, esa búsqueda infringe sus protocolos de seguridad y está bloqueada."
+            ejecutar_voz_en_segundo_plano(respuesta_final)
+            return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
         respuesta_final = f"Buscando {busqueda}."
         webbrowser.open(f"https://www.google.com/search?q={busqueda}")
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 3. ABRIR JUEGOS Y PROGRAMAS (Excepciones directas)
+    # 3. ABRIR JUEGOS Y PROGRAMAS
     if "abre steam" in comando:
         respuesta_final = "Iniciando Steam."
         try:
@@ -163,19 +202,25 @@ def procesar_comando():
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 4. COMANDO INTELIGENTE DE NAVEGACIÓN WEB (CUALQUIER OTRA PÁGINA)
-    elif "abre" in comando or "entra a" in comando or "ve a" in comando:
+    # 4. COMANDO INTELIGENTE DE NAVEGACIÓN WEB (CUALQUIER OTRA PÁGINA USANDO "ABRE" O "BUSCA")
+    elif any(palabra in comando for palabra in ["abre", "entra a", "ve a", "busca"]):
         afirmaciones = ["Enseguida, señor.", "A la orden.", "Como usted disponga, señor.", "Procediendo."]
         
         # Limpiar el comando para quedarse solo con el nombre del sitio
-        sitio_solicitado = comando.replace("ve a la página de", "")\
-                                  .replace("abre la página de", "")\
-                                  .replace("entra a", "")\
-                                  .replace("abre", "").strip()
+        sitio_solicitado = comando
+        for p in ["ve a la página de", "abre la página de", "entra a", "ve a", "abre", "busca"]:
+            sitio_solicitado = sitio_solicitado.replace(p, "")
+        sitio_solicitado = sitio_solicitado.strip()
         
+        # Filtro Blacklist
+        if sitio_bloqueado(sitio_solicitado):
+            respuesta_final = "Lo siento señor, el acceso a ese sitio web ha sido bloqueado por su lista de seguridad."
+            ejecutar_voz_en_segundo_plano(respuesta_final)
+            return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
+
         respuesta_final = f"{random.choice(afirmaciones)} Redirigiendo a {sitio_solicitado}."
         
-        # EL TRUCO: Usar DuckDuckGo con el modificador '\' para ir al primer resultado directamente
+        # Usar DuckDuckGo con el modificador '\' para ir al primer resultado directamente
         url_busqueda = f"https://duckduckgo.com/?q=\\{sitio_solicitado}"
         webbrowser.open(url_busqueda)
         
@@ -197,7 +242,7 @@ def procesar_comando():
         ejecutar_voz_en_segundo_plano(respuesta_final)
         return jsonify({"comando_detectado": comando_detectado, "respuesta": respuesta_final})
 
-    # 6. RESPUESTAS CONVERSACIONALES DEL CEREBRO (Si no fue ninguna orden anterior)
+    # 6. RESPUESTAS CONVERSACIONALES DEL CEREBRO
     else:
         respuesta_final = pensar_y_responder(comando)
         ejecutar_voz_en_segundo_plano(respuesta_final)
